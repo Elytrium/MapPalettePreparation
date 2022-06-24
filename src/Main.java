@@ -83,7 +83,7 @@ public class Main {
 
   private static final Map<MapVersion, ByteBuffer> remapBuffers = new EnumMap<>(MapVersion.class);
 
-  private static final ByteBuffer mainBuffer = ByteBuffer.allocate(256 * 256 * 256 * Integer.BYTES);
+  private static final ByteBuffer mainBuffer = ByteBuffer.allocateDirect(256 * 256 * 256 * Integer.BYTES);
 
   public static void main(String[] args) {
     Map<Color, Byte> previous = new ConcurrentHashMap<>();
