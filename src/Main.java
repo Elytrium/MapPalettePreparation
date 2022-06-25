@@ -81,9 +81,9 @@ public class Main {
 
   private static final Map<MapVersion, Map<Color, Byte>> colorToIndexMap = new EnumMap<>(MapVersion.class);
 
-  private static final Map<MapVersion, ByteBuffer> remapBuffers = new EnumMap<>(MapVersion.class);
+  private static final Map<MapVersion, byte[]> remapBuffers = new EnumMap<>(MapVersion.class);
 
-  private static final ByteBuffer mainBuffer = ByteBuffer.allocateDirect(256 * 256 * 256 * Integer.BYTES);
+  private static final byte[] mainBuffer = new byte[256 * 256 * 256];
 
   public static void main(String[] args) {
     Map<Color, Byte> previous = new ConcurrentHashMap<>();
@@ -92,7 +92,7 @@ public class Main {
       colorToIndexMap.put(version, current);
       previous = current;
 
-      remapBuffers.put(version, ByteBuffer.allocateDirect(colors.length * MINECRAFT_MULTIPLIER * Integer.BYTES));
+      remapBuffers.put(version, new byte[colors.length * MINECRAFT_MULTIPLIER]);
     }
 
     for (byte i = 0; i < colors.length; i++) {
@@ -100,7 +100,7 @@ public class Main {
 
       for (byte j = 0; j < MINECRAFT_MULTIPLIER; ++j) {
         int index = i * MINECRAFT_MULTIPLIER + j;
-        colorToIndexMap.get(color.getSince()).put(color.multiply(j), (byte) (index < 128 ? index : -129 + (index - 127)));
+        colorToIndexMap.get(color.getSince()).put(color.multiply(j), (byte) (index));
       }
     }
 
@@ -113,7 +113,7 @@ public class Main {
         for (int g = 0; g < 256; ++g) {
           for (int b = 0; b < 256; ++b) {
             Color color = new Color(r, g, b);
-            mainBuffer.put(color.toIndex() * Integer.BYTES, matchColor(color, MapVersion.MAXIMUM_VERSION));
+            mainBuffer[color.toIndex()] = matchColor(color, MapVersion.MAXIMUM_VERSION);
           }
         }
       });
@@ -121,18 +121,21 @@ public class Main {
     }
 
     for (MapVersion version : MapVersion.values()) {
-      ByteBuffer remapBuffer = remapBuffers.get(version);
+      byte[] remapBuffer = remapBuffers.get(version);
       for (byte i = 0; i < colors.length; i++) {
         byte idx = i;
         executor.execute(() -> {
-          Color color = colors[idx];
-          byte remappedColor;
-          if (color.getSince().compareTo(version) <= 0) {
-            remappedColor = idx;
-          } else {
-            remappedColor = matchColor(color, version);
+          Color preColor = colors[idx];
+          for (int ix = 0; ix < MINECRAFT_MULTIPLIER; ++ix) {
+            Color color = preColor.multiply(ix);
+            byte remappedColor;
+            if (color.getSince().compareTo(version) <= 0) {
+              remappedColor = (byte) ((idx * 4) + ix);
+            } else {
+              remappedColor = matchColor(color, version);
+            }
+            remapBuffer[idx * 4 + ix] = remappedColor;
           }
-          remapBuffer.put(idx * Integer.BYTES, remappedColor);
         });
         ++tasksCounter;
       }
@@ -154,12 +157,9 @@ public class Main {
     }
   }
 
-  private static void saveBuffer(String filename, ByteBuffer buffer) {
-    try {
-      FileOutputStream fos = new FileOutputStream(filename);
-      FileChannel channel = fos.getChannel();
-      channel.write(buffer);
-      fos.close();
+  private static void saveBuffer(String filename, byte[] buffer) {
+    try (FileOutputStream fos = new FileOutputStream(filename)) {
+      fos.write(buffer);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -237,7 +237,7 @@ public class Main {
           return new Color(red, green, blue, this.since);
         }
         case 2: {
-          return new Color(this.red & ~15, this.green & ~15, this.blue & ~15, this.since);
+          return new Color(this.red, this.green, this.blue, this.since);
         }
         case 3: {
           int red = (this.red * 135) >> 8;
@@ -252,7 +252,7 @@ public class Main {
     }
 
     public int toIndex() {
-      return this.red << 16 | this.green << 8 | this.blue;
+      return (this.red << 16) | (this.green << 8) | (this.blue);
     }
 
     public int getRed() {
@@ -273,7 +273,7 @@ public class Main {
 
     @Override
     public int hashCode() {
-      return (this.red << 16) | (this.green << 8) | (this.blue);
+      return this.toIndex();
     }
 
     @Override
@@ -286,7 +286,7 @@ public class Main {
       }
     }
   }
-  
+
   private enum MapVersion {
     MINIMUM_VERSION,
     MINECRAFT_1_8,
