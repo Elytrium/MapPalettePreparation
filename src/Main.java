@@ -1,8 +1,5 @@
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
@@ -13,7 +10,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class Main {
 
   private static final Color[] colors = new Color[] {
-      color(0, 0, 0),
+      null,
       color(127, 178, 56),
       color(247, 233, 163),
       color(199, 199, 199),
@@ -97,6 +94,9 @@ public class Main {
 
     for (byte i = 0; i < colors.length; i++) {
       Color color = colors[i];
+      if (color == null) {
+        continue;
+      }
 
       for (byte j = 0; j < MINECRAFT_MULTIPLIER; ++j) {
         int index = i * MINECRAFT_MULTIPLIER + j;
@@ -124,8 +124,12 @@ public class Main {
       byte[] remapBuffer = remapBuffers.get(version);
       for (byte i = 0; i < colors.length; i++) {
         byte idx = i;
+        Color preColor = colors[idx];
+        if (preColor == null) {
+          continue;
+        }
+
         executor.execute(() -> {
-          Color preColor = colors[idx];
           for (int ix = 0; ix < MINECRAFT_MULTIPLIER; ++ix) {
             Color color = preColor.multiply(ix);
             byte remappedColor;
@@ -178,7 +182,7 @@ public class Main {
   }
 
   public static byte matchColor(Color color, MapVersion version) {
-    Color match = colors[0];
+    Color match = colors[1];
     double best = -1.0;
 
     for (Color cachedColor : colorToIndexMap.get(version).keySet()) {
