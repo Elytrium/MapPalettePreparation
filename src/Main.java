@@ -69,7 +69,7 @@ public class Main {
       color(58, 142, 140, MapVersion.MINECRAFT_1_16),
       color(86, 44, 62, MapVersion.MINECRAFT_1_16),
       color(20, 180, 133, MapVersion.MINECRAFT_1_16),
-      color(100, 100, 100, MapVersion.MINECRAFT_1_16),
+      color(100, 100, 100, MapVersion.MINECRAFT_1_17),
       color(216, 175, 147, MapVersion.MINECRAFT_1_17),
       color(127, 167, 150, MapVersion.MINECRAFT_1_17)
   };
